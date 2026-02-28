@@ -12,7 +12,7 @@ bedrock = boto3.client("bedrock-runtime")
 s3 = boto3.client("s3")
 
 LOG_BUCKET = os.environ.get("LOG_BUCKET", "ai-eval-logs-dev")
-MODEL_ID = os.environ.get("MODEL_ID", "anthropic.claude-3-5-haiku-20241022")
+MODEL_ID = os.environ.get("MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
 
 
 def lambda_handler(event, context):
