@@ -1,13 +1,14 @@
 {
   "servers": {
     "candidate-eval-mcp": {
+      "type": "stdio",
       "command": "python",
       "args": [
         "C:\\Users\\Legion\\OneDrive - BYU-Idaho\\Winter 2026\\promptTrace\\MCP\\candidate-eval-mcp\\server.py"
       ],
       "env": {
-        "CANDIDATE_TOKEN": "test-token",
-        "TASK_ID": "task-001",
+        "CANDIDATE_TOKEN": "test-candidate3",
+        "TASK_ID": "task-003",
         "EVAL_API_BASE_URL": "https://2kmvzraxzl.execute-api.us-east-1.amazonaws.com/dev"
       }
     }
