@@ -173,7 +173,7 @@ promptTrace/
 ├── instructions.txt          # Original requirements
 ├── CLAUDE.md                 # This file
 ├── README.md                 # Project overview
-├── cloud/                    # AWS Lambda and infrastructure
+├── Devops/                   # AWS Lambda and infrastructure
 │   ├── interaction-handler/  # POST /interact Lambda
 │   ├── outcome-logger/       # POST /interaction-outcome Lambda
 │   └── infrastructure/       # Terraform/CloudFormation templates
@@ -181,7 +181,7 @@ promptTrace/
 │   ├── server.js/py          # Main server code
 │   ├── tools/                # Tool definitions
 │   └── config.ts/py          # Configuration
-└── DevOps/                   # Deployment and monitoring
+└── Cloud/                   # Deployment and monitoring
     ├── lambda-config.yaml
     ├── api-gateway-setup.yaml
     └── monitoring/           # CloudWatch config
