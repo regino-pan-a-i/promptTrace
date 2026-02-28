@@ -1,6 +1,6 @@
 output "api_endpoint_url" {
-  description = "API Gateway endpoint URL (will be available once Lambda functions are deployed)"
-  value       = "Pending: Deploy Lambda functions and uncomment integrations/deployment in api-gateway.tf"
+  description = "API Gateway endpoint URL"
+  value       = aws_api_gateway_stage.prod.invoke_url
 }
 
 output "logs_bucket_name" {

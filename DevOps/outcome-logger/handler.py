@@ -1,10 +1,11 @@
 import json
+import os
 import boto3
 from datetime import datetime
 
 s3 = boto3.client("s3")
 
-LOG_BUCKET = "ai-eval-logs-dev"
+LOG_BUCKET = os.environ.get("LOG_BUCKET", "ai-eval-logs-dev")
 
 
 def lambda_handler(event, context):
