@@ -1,0 +1,88 @@
+{
+  "candidateId": "cand_7f3a91c2",
+  "evaluationPeriod": {
+    "startDate": "2026-02-20",
+    "endDate": "2026-02-27",
+    "tasksCompleted": 5
+  },
+  "foundationalSignals": {
+    "contextQuality": {
+      "score": 84,
+      "fileCountAvg": 4.2,
+      "avgPromptLength": 512,
+      "questionsAsked": 6,
+      "clarityRating": 0.88
+    },
+    "analysisDepth": {
+      "score": 79,
+      "avgTimeToDecisionMs": 2840,
+      "followUpQuestions": 4,
+      "modificationRate": 0.62
+    },
+    "criticalThinking": {
+      "score": 87,
+      "rejectionRate": 0.28,
+      "highConfidenceRejectionRate": 0.11,
+      "modificationCount": 13,
+      "acceptedAfterModification": 9
+    },
+    "testCulture": {
+      "score": 91,
+      "testsRunBeforeAccept": 0.75,
+      "testsPassRateAfterEdit": 0.94,
+      "testCoverageChangeAvg": 0.07
+    },
+    "codeQuality": {
+      "score": 83,
+      "complexityReductionAvg": 0.18,
+      "duplicationReductionAvg": 0.22,
+      "lintIssuesIntroduced": 0
+    },
+    "decisionQuality": {
+      "score": 89,
+      "postEditFailureRate": 0.06,
+      "rollbackRate": 0.04,
+      "bugIntroductions": 0
+    }
+  },
+  "compositeScores": {
+    "aiLeverageScore": {
+      "score": 88,
+      "description": "Strategically accepts high-confidence suggestions while modifying where appropriate."
+    },
+    "problemSolverScore": {
+      "score": 85,
+      "description": "Demonstrates strong analytical thinking, validates suggestions, and improves solutions."
+    },
+    "engineerScore": {
+      "score": 90,
+      "description": "Consistently validates with tests and maintains code quality standards."
+    }
+  },
+  "behavioralClassification": "Thoughtful Collaborator → Problem Solver",
+  "riskFlags": [],
+  "strengths": [
+    "Runs tests before and after applying AI suggestions",
+    "Modifies AI output rather than blindly accepting",
+    "Maintains or improves code quality metrics",
+    "Rejects low-confidence suggestions appropriately"
+  ],
+  "areasForImprovement": [
+    "Could ask clarifying questions slightly earlier in ambiguous tasks",
+    "Occasionally over-analyzes low-risk refactors"
+  ],
+  "hiringRecommendation": {
+    "decision": "HIRE",
+    "confidence": 0.87,
+    "rationale": "High problem-solving ability combined with disciplined engineering practices and strong AI leverage."
+  },
+  "auditMetadata": {
+    "generatedAt": "2026-02-28T14:12:44Z",
+    "scoringModelVersion": "v1.3.0",
+    "dataSources": {
+      "interactionsAnalyzed": 23,
+      "outcomesAnalyzed": 23,
+      "s3MetricsPath": "metrics/cand_7f3a91c2/summary.json"
+    }
+  }
+}
