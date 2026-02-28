@@ -30,13 +30,26 @@ def lambda_handler(event, context):
 def _log_outcome(candidate_id: str, request_id: str, task_id: str, decisions: list, metrics: dict):
     now = datetime.utcnow()
     key = f"outcomes/{now.year}/{now.month:02}/{now.day:02}/{candidate_id}/{request_id}.json"
+    
+    # Parse metrics for enhanced data (Phase 4A)
+    enhanced_metrics = {
+        "decisionSpeed": metrics.get("decisionSpeed", "unknown"),  # milliseconds to decision
+        "modificationCount": metrics.get("modificationCount", 0),  # How many edits were modified before applying
+        "modificationDescription": metrics.get("modificationDescription", ""),  # What was changed
+        "rejectionCount": metrics.get("rejectionCount", 0),  # How many edits were rejected
+        "testStatusBefore": metrics.get("testStatusBefore", {}),  # Tests passing before
+        "testStatusAfter": metrics.get("testStatusAfter", {}),  # Tests passing after
+        "testCoverageChange": metrics.get("testCoverageChange", 0),  # Percentage point change
+        "followUpQuestions": metrics.get("followUpQuestions", 0),  # Did they ask follow-up questions?
+    }
+    
     payload = {
         "requestId": request_id,
         "candidateId": candidate_id,
         "taskId": task_id,
         "timestamp": now.isoformat(),
         "decisions": decisions,
-        "metrics": metrics,
+        "metrics": enhanced_metrics,
     }
     s3.put_object(Bucket=LOG_BUCKET, Key=key, Body=json.dumps(payload), ContentType="application/json")
 
