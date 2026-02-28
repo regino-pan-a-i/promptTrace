@@ -131,6 +131,54 @@ resource "aws_api_gateway_model" "outcome_request" {
   })
 }
 
+# Finalize-project endpoint
+resource "aws_api_gateway_resource" "finalize_project" {
+  rest_api_id = aws_api_gateway_rest_api.prompttrace_api.id
+  parent_id   = aws_api_gateway_rest_api.prompttrace_api.root_resource_id
+  path_part   = "finalize-project"
+}
+
+resource "aws_api_gateway_method" "finalize_project_post" {
+  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
+  resource_id      = aws_api_gateway_resource.finalize_project.id
+  http_method      = "POST"
+  authorization    = "NONE"
+  request_models = {
+    "application/json" = aws_api_gateway_model.finalize_request.name
+  }
+  request_validator_id = aws_api_gateway_request_validator.all.id
+
+  depends_on = [aws_api_gateway_model.finalize_request]
+}
+
+resource "aws_api_gateway_integration" "finalize_project_lambda" {
+  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
+  resource_id      = aws_api_gateway_resource.finalize_project.id
+  http_method      = aws_api_gateway_method.finalize_project_post.http_method
+  type             = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri              = aws_lambda_function.metrics_calculator.invoke_arn
+  timeout_milliseconds = 29000  # API Gateway max timeout (Lambda itself has 120s)
+
+  depends_on = [aws_api_gateway_method.finalize_project_post, aws_lambda_permission.allow_api_gateway_finalize]
+}
+
+# Request model for finalize-project
+resource "aws_api_gateway_model" "finalize_request" {
+  rest_api_id  = aws_api_gateway_rest_api.prompttrace_api.id
+  name         = "FinalizeRequest"
+  content_type = "application/json"
+
+  schema = jsonencode({
+    type = "object"
+    properties = {
+      candidateToken = { type = "string" }
+      taskId         = { type = "string" }
+    }
+    required = ["candidateToken"]
+  })
+}
+
 # Deployment
 resource "aws_api_gateway_deployment" "prompttrace" {
   rest_api_id = aws_api_gateway_rest_api.prompttrace_api.id
@@ -138,8 +186,10 @@ resource "aws_api_gateway_deployment" "prompttrace" {
   depends_on = [
     aws_api_gateway_integration.interact_lambda,
     aws_api_gateway_integration.interaction_outcome_lambda,
+    aws_api_gateway_integration.finalize_project_lambda,
     aws_lambda_function.interaction_handler,
-    aws_lambda_function.outcome_logger
+    aws_lambda_function.outcome_logger,
+    aws_lambda_function.metrics_calculator,
   ]
 }
 

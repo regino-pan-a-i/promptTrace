@@ -27,3 +27,8 @@ variable "outcome_logger_function_name" {
   type        = string
   default     = "promptTrace-outcome-logger"
 }
+variable "metrics_calculator_function_name" {
+  description = "Name of the metrics calculator Lambda function"
+  type        = string
+  default     = "promptTrace-metrics-calculator"
+}
