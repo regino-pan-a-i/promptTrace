@@ -42,6 +42,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "eval_logs" {
     id     = "delete-after-7-days"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = 7
     }

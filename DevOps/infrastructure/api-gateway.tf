@@ -22,22 +22,24 @@ resource "aws_api_gateway_method" "interact_post" {
   http_method      = "POST"
   authorization    = "NONE"
   request_models = {
-    "application/json" = aws_api_gateway_model.interact_request.id
+    "application/json" = aws_api_gateway_model.interact_request.name
   }
   request_validator_id = aws_api_gateway_request_validator.all.id
+
+  depends_on = [aws_api_gateway_model.interact_request]
 }
 
-resource "aws_api_gateway_integration" "interact_lambda" {
-  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
-  resource_id      = aws_api_gateway_resource.interact.id
-  http_method      = aws_api_gateway_method.interact_post.http_method
-  type             = "AWS_PROXY"
-  integration_http_method = "POST"
-  uri              = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.interaction_handler_function_name}/invocations"
-  timeout_milliseconds = 30000
-
-  depends_on = [aws_api_gateway_method.interact_post]
-}
+#resource "aws_api_gateway_integration" "interact_lambda" {
+#  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
+#  resource_id      = aws_api_gateway_resource.interact.id
+#  http_method      = aws_api_gateway_method.interact_post.http_method
+#  type             = "AWS_PROXY"
+#  integration_http_method = "POST"
+#  uri              = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.interaction_handler_function_name}/invocations"
+#  timeout_milliseconds = 30000
+#
+#  depends_on = [aws_api_gateway_method.interact_post]
+#}
 
 # Interaction-outcome endpoint
 resource "aws_api_gateway_resource" "interaction_outcome" {
@@ -52,22 +54,24 @@ resource "aws_api_gateway_method" "interaction_outcome_post" {
   http_method      = "POST"
   authorization    = "NONE"
   request_models = {
-    "application/json" = aws_api_gateway_model.outcome_request.id
+    "application/json" = aws_api_gateway_model.outcome_request.name
   }
   request_validator_id = aws_api_gateway_request_validator.all.id
+
+  depends_on = [aws_api_gateway_model.outcome_request]
 }
 
-resource "aws_api_gateway_integration" "interaction_outcome_lambda" {
-  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
-  resource_id      = aws_api_gateway_resource.interaction_outcome.id
-  http_method      = aws_api_gateway_method.interaction_outcome_post.http_method
-  type             = "AWS_PROXY"
-  integration_http_method = "POST"
-  uri              = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.outcome_logger_function_name}/invocations"
-  timeout_milliseconds = 30000
-
-  depends_on = [aws_api_gateway_method.interaction_outcome_post]
-}
+#resource "aws_api_gateway_integration" "interaction_outcome_lambda" {
+#  rest_api_id      = aws_api_gateway_rest_api.prompttrace_api.id
+#  resource_id      = aws_api_gateway_resource.interaction_outcome.id
+#  http_method      = aws_api_gateway_method.interaction_outcome_post.http_method
+#  type             = "AWS_PROXY"
+#  integration_http_method = "POST"
+#  uri              = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${var.outcome_logger_function_name}/invocations"
+#  timeout_milliseconds = 30000
+#
+#  depends_on = [aws_api_gateway_method.interaction_outcome_post]
+#}
 
 # Request validators
 resource "aws_api_gateway_request_validator" "all" {
@@ -128,12 +132,18 @@ resource "aws_api_gateway_model" "outcome_request" {
 }
 
 # Deployment
-resource "aws_api_gateway_deployment" "prompttrace" {
-  rest_api_id = aws_api_gateway_rest_api.prompttrace_api.id
-  stage_name  = local.environment
-
-  depends_on = [
-    aws_api_gateway_integration.interact_lambda,
-    aws_api_gateway_integration.interaction_outcome_lambda
-  ]
-}
+# To be enabled once Lambda functions are created
+#resource "aws_api_gateway_deployment" "prompttrace" {
+#  rest_api_id = aws_api_gateway_rest_api.prompttrace_api.id
+#
+#  depends_on = [
+#    aws_api_gateway_integration.interact_lambda,
+#    aws_api_gateway_integration.interaction_outcome_lambda
+#  ]
+#}
+#
+#resource "aws_api_gateway_stage" "prod" {
+#  deployment_id = aws_api_gateway_deployment.prompttrace.id
+#  rest_api_id   = aws_api_gateway_rest_api.prompttrace_api.id
+#  stage_name    = local.environment
+#}
