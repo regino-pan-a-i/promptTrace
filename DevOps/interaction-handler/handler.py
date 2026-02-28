@@ -1,46 +1,56 @@
 import json
 import uuid
+import os
 import boto3
 from datetime import datetime
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 bedrock = boto3.client("bedrock-runtime")
 s3 = boto3.client("s3")
 
-LOG_BUCKET = "ai-eval-logs-dev"
-MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+LOG_BUCKET = os.environ.get("LOG_BUCKET", "ai-eval-logs-dev")
+MODEL_ID = os.environ.get("MODEL_ID", "anthropic.claude-3-5-haiku-20241022")
 
 
 def lambda_handler(event, context):
-    body = json.loads(event.get("body", "{}"))
+    try:
+        body = json.loads(event.get("body", "{}"))
 
-    candidate_token = body.get("candidateToken")
-    task_id = body.get("taskId")
-    user_message = body.get("userMessage")
-    ctx = body.get("context", {})
+        candidate_token = body.get("candidateToken")
+        task_id = body.get("taskId")
+        user_message = body.get("userMessage")
+        ctx = body.get("context", {})
 
-    if not all([candidate_token, task_id, user_message]):
-        return _response(400, {"error": "candidateToken, taskId, and userMessage are required"})
+        if not all([candidate_token, task_id, user_message]):
+            return _response(400, {"error": "candidateToken, taskId, and userMessage are required"})
 
-    request_id = str(uuid.uuid4())
-    candidate_id = candidate_token  # TODO: resolve via DynamoDB if needed
+        request_id = str(uuid.uuid4())
+        candidate_id = candidate_token  # TODO: resolve via DynamoDB if needed
 
-    prompt = _build_prompt(user_message, ctx)
-    bedrock_response = _invoke_bedrock(prompt)
+        prompt = _build_prompt(user_message, ctx)
+        logger.info(f"Invoking Bedrock model {MODEL_ID} for request {request_id}")
+        bedrock_response = _invoke_bedrock(prompt)
 
-    assistant_message = bedrock_response.get("assistantMessage", "")
-    plan = bedrock_response.get("plan", "")
-    proposed_edits = bedrock_response.get("proposedEdits", [])
-    tags = bedrock_response.get("tags", {})
+        assistant_message = bedrock_response.get("assistantMessage", "")
+        plan = bedrock_response.get("plan", "")
+        proposed_edits = bedrock_response.get("proposedEdits", [])
+        tags = bedrock_response.get("tags", {})
 
-    _log_interaction(candidate_id, request_id, task_id, body, bedrock_response)
+        _log_interaction(candidate_id, request_id, task_id, body, bedrock_response)
 
-    return _response(200, {
-        "requestId": request_id,
-        "assistantMessage": assistant_message,
-        "plan": plan,
-        "proposedEdits": proposed_edits,
-        "tags": tags,
-    })
+        return _response(200, {
+            "requestId": request_id,
+            "assistantMessage": assistant_message,
+            "plan": plan,
+            "proposedEdits": proposed_edits,
+            "tags": tags,
+        })
+    except Exception as e:
+        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
+        return _response(500, {"error": str(e)})
 
 
 def _build_prompt(user_message: str, ctx: dict) -> str:

@@ -173,18 +173,25 @@ promptTrace/
 ├── instructions.txt          # Original requirements
 ├── CLAUDE.md                 # This file
 ├── README.md                 # Project overview
-├── Devops/                   # AWS Lambda and infrastructure
+├── DevOps/                   # AWS Lambda, infrastructure, and deployment
 │   ├── interaction-handler/  # POST /interact Lambda
+│   │   ├── handler.py        # Lambda function code
+│   │   └── requirements.txt  # Python dependencies
 │   ├── outcome-logger/       # POST /interaction-outcome Lambda
-│   └── infrastructure/       # Terraform/CloudFormation templates
-├── MCP/                      # MCP server implementation
-│   ├── server.js/py          # Main server code
-│   ├── tools/                # Tool definitions
-│   └── config.ts/py          # Configuration
-└── Cloud/                   # Deployment and monitoring
-    ├── lambda-config.yaml
-    ├── api-gateway-setup.yaml
-    └── monitoring/           # CloudWatch config
+│   │   ├── handler.py        # Lambda function code
+│   │   └── requirements.txt  # Python dependencies
+│   └── infrastructure/       # Terraform: API Gateway, IAM, S3, networking
+│       ├── main.tf           # Core infrastructure config
+│       ├── api-gateway.tf    # API Gateway setup
+│       ├── iam.tf            # IAM roles and policies
+│       ├── s3.tf             # S3 buckets for logging
+│       ├── variables.tf      # Input variables
+│       ├── outputs.tf        # Output values
+│       └── terraform.tfstate # Terraform state
+└── MCP/                      # MCP server implementation
+    ├── server.js/py          # Main server code
+    ├── tools/                # Tool definitions
+    └── config.ts/py          # Configuration
 ```
 
 ---
