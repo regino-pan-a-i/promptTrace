@@ -285,5 +285,66 @@ def evaluation_propose_edits(
         return json.dumps({"error": f"{type(e).__name__}: {e}", "request_id": request_id})
 
 
+@mcp.tool()
+def finalize_project(evaluation_summary: str = "") -> str:
+    """
+    Finalizes the project evaluation and generates a comprehensive evaluation report.
+
+    Args:
+        evaluation_summary: Optional summary of the evaluation progress and findings.
+
+    Returns:
+        JSON string with the finalization result and evaluation report (and request_id for log correlation).
+    """
+    request_id = _make_request_id()
+    start = time.time()
+
+    _log_call_start(request_id, "finalize_project", {
+        "evaluation_summary_len": len(evaluation_summary),
+        "stub": _is_stub(),
+    })
+
+    try:
+        if _is_stub():
+            result = {
+                "mode": "stub",
+                "message": "Backend not configured. Returning a stub finalization result.",
+                "status": "completed",
+                "report": {
+                    "overall_assessment": "Stub mode — no real evaluation performed.",
+                    "summary": evaluation_summary or "No summary provided.",
+                    "recommendation": "Configure EVAL_API_BASE_URL to enable real evaluation.",
+                },
+            }
+        else:
+            result = call_aws_backend(
+                endpoint="/finalize-project",
+                payload={
+                    "candidateToken": os.environ.get("CANDIDATE_TOKEN", ""),
+                    "taskId": os.environ.get("TASK_ID", ""),
+                    "evaluationSummary": evaluation_summary,
+                },
+            )
+
+        latency_ms = int((time.time() - start) * 1000)
+        _log_call_end(request_id, "finalize_project", "ok", latency_ms,
+                      backend_keys=list(result.keys()))
+        return _build_response(result, request_id)
+
+    except urllib.error.HTTPError as e:
+        latency_ms = int((time.time() - start) * 1000)
+        err_body = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else ""
+        _log_call_end(request_id, "finalize_project", "error", latency_ms,
+                      error_type="HTTPError", error_code=getattr(e, "code", None),
+                      error_body=err_body[:2000])
+        return json.dumps({"error": f"HTTP {getattr(e, 'code', 'unknown')}", "detail": err_body, "request_id": request_id})
+
+    except Exception as e:
+        latency_ms = int((time.time() - start) * 1000)
+        _log_call_end(request_id, "finalize_project", "error", latency_ms,
+                      error_type=type(e).__name__, error_message=str(e))
+        return json.dumps({"error": f"{type(e).__name__}: {e}", "request_id": request_id})
+
+
 if __name__ == "__main__":
     mcp.run()
