@@ -1,0 +1,256 @@
+1. VS Code + Copilot + MCP layer
+1.1 Goals
+Let candidates work in VS Code with GitHub Copilot as the UI.
+Use an MCP server you provide, which exposes your AWS backend as tools.
+Preserve detailed logging of how candidates use AI to modify the project.
+1.2 Functional requirements (VS Code / Copilot side)
+MCP server configuration for candidates
+Candidates install/enable Copilot with MCP support.
+They add your MCP server configuration (URL or local executable) via Copilot’s MCP settings.
+Candidates provide a candidate token or ID in the MCP configuration (e.g., environment variable, config file, or Copilot secrets).
+Your MCP server forwards that ID/token with every call to your backend so you can map it to candidateId and taskId.
+Interaction model in VS Code
+Candidates interact through Copilot Chat.
+The MCP server exposes tools so that:
+Copilot can call “evaluation” tools automatically as part of its reasoning.
+The user can explicitly trigger tools by asking Copilot to “use the evaluation assistant” or similar.
+Copilot handles:
+Showing messages and explanations.
+Asking the candidate to confirm tool calls or file changes (depending on your configuration and Copilot capabilities).
+Workspace context
+Copilot is responsible for:
+Supplying file contents, paths, and selections to your MCP tools as inputs.
+Providing project structure summaries when needed.
+Your MCP server’s tool definitions must specify required parameters like:
+file_path, file_content, project_summary, user_prompt.
+Edit application
+Copilot uses its own code editing capabilities to apply changes in the workspace.
+Your MCP tools return plans and proposed edits (file path + content/diff + rationale).
+Copilot:
+Shows these to the candidate.
+Applies them after explicit or implicit approval.
+You do not write file-manipulation code in MCP; you rely on Copilot’s built‑in editing behavior.
+1.3 Non‑functional requirements
+Clear communication to candidates that the AI usage is logged and evaluated.
+Minimal friction: once MCP is configured, candidates just use Copilot chat.
+Your MCP server should be resilient (handle timeouts, invalid inputs, etc.) and secure (validate tokens, rate limit if needed).
+
+2. Cloud implementation (AWS backend)
+This remains very close to the previous design; the main difference is that the caller is now your MCP server (not a custom extension).
+2.1 High‑level components
+HTTPS API layer (e.g., API Gateway or a load‑balanced service).
+Lambda functions (or equivalent backend services):
+InteractionHandler (the main orchestrator).
+OutcomeLogger (for logging user decisions and outcomes).
+Bedrock for model inference.
+S3 for storing interaction logs and outcome logs.
+IAM roles/policies for secure component communication.
+Monitoring and metrics via Cloud services.
+2.2 API design
+Endpoints
+POST /interact
+Called by your MCP server when Copilot wants the evaluation assistant to respond.
+Input includes candidate info, user message, and workspace context.
+Output contains AI explanation, plan, and proposed edits.
+POST /interaction-outcome
+Called by your MCP server when Copilot (or your server logic) wants to report how edits were used/accepted.
+Input includes decisions per edit and additional metrics.
+Output is a simple acknowledgment.
+Request/response format
+JSON for all payloads.
+Every /interact request results in:
+A server‑generated requestId that ties together:
+The AI’s plan and edits.
+Future interaction-outcome records.
+Required input fields (from MCP server):
+candidateToken or candidateId (from MCP config).
+taskId or exercise identifier.
+userMessage.
+context:
+files (a list with path, content where needed).
+selection or cursor position (if relevant).
+Optional projectSummary.
+Security
+The backend:
+Validates the candidate token or ID.
+Applies basic rate limiting per candidate or IP.
+All communication is over HTTPS.
+IAM is used for internal permissions (Lambda, Bedrock, S3), not for candidates directly.
+2.3 S3 buckets and logging
+One or more buckets, for example: ai-eval-logs-<env>.
+Folder structure:
+interactions/yyyy/mm/dd/{candidateId}/{requestId}.json
+Contains request metadata, prompts, model responses, plan, and edits.
+outcomes/yyyy/mm/dd/{candidateId}/{requestId}.json
+Contains decisions, test results, and timing info.
+Encryption enabled (SSE‑S3 or SSE‑KMS).
+Lifecycle policies as needed (e.g., move older logs to colder storage).
+2.4 Monitoring and analytics
+Logs from Lambdas stored centrally.
+Custom metrics:
+Interactions per candidate.
+Average tokens per interaction.
+Ratio of approved edits.
+Test pass rates after AI edits.
+Optional: query S3 logs with Athena, and build dashboards (e.g., by candidate, task, or time).
+
+3. MCP server functionality
+The MCP server is now your “client” to the AWS backend, and your “adapter” to Copilot.
+3.1 Responsibilities
+Expose tools to Copilot
+You define tools like:
+evaluate_project_interaction
+Inputs:
+candidateToken (may be implicit, coming from MCP config).
+taskId (could be fixed per exercise or dynamic).
+userMessage (the candidate’s prompt).
+files (list with path, content, and maybe isOpen / isSelected).
+Optional projectSummary.
+Behavior:
+Calls POST /interact.
+Returns:
+assistantMessage (explanation to show in chat).
+plan (steps).
+proposedEdits[] (structured edits and rationales).
+requestId.
+report_interaction_outcome
+Inputs:
+candidateToken.
+taskId.
+requestId.
+decisions[]:
+filePath, editType, decision (approved, rejected, modified), optional notes.
+Optional testsRun, testsPassed, timeToDecisionMs.
+Behavior:
+Calls POST /interaction-outcome.
+Returns acknowledgment.
+Handle candidate identity
+The MCP server loads a candidate token or ID from:
+Configuration file, environment variable, or secrets store.
+It injects that into every backend call.
+It does not rely on VS Code to manage auth directly; Copilot simply calls tools.
+Orchestrate HTTP calls
+Serialize tool inputs to your backend’s JSON format.
+Handle network errors, timeouts, and retries.
+Ensure consistent logging (e.g., correlation IDs) if needed.
+Shape outputs for Copilot
+Return structured data that Copilot can:
+Display as chat text.
+Use to apply edits to files.
+Any explanatory text should be ready for Copilot to show the candidate.
+3.2 Non‑functional requirements for MCP server
+Lightweight and stateless (can run locally or remotely).
+Configurable backend base URL and candidate token.
+Robust error messages when your backend is unreachable or returns errors.
+Logging on the MCP side for debugging (without storing sensitive code longer than necessary).
+
+4. Lambda functionality
+We’ll keep the same two main Lambdas, with the understanding that the caller is the MCP server.
+4.1 InteractionHandler Lambda (POST /interact)
+Responsibilities:
+Input validation and normalization
+Ensure:
+candidateToken or candidateId is present.
+taskId, userMessage, context are present.
+Map candidateToken → candidateId using your internal mapping (e.g., DynamoDB or a config table).
+Generate requestId.
+Enforce size limits on context (truncate long files or only include relevant snippets).
+Prompt and instruction construction
+Build system message describing:
+This is an evaluation environment.
+The candidate is working on a specific assignment.
+The model should:
+Explain reasoning.
+Propose edits via structured tools.
+Encourage understanding and good habits (tests, refactors, etc.).
+Include:
+Assignment requirements and constraints.
+Relevant code snippets and project summary from context.
+Tool schema for the model
+Within the Bedrock call, define tools such as:
+propose_edit:
+file_path, edit_type, content_or_diff, rationale.
+Optional: tag_interaction:
+taskCategory, complexity, confidence.
+Call Bedrock
+Invoke your chosen model with:
+System message + user message + context.
+Tool definitions.
+Receive:
+Explanation text.
+Tool calls representing proposed edits and tags.
+Metadata (tokens, latency).
+Normalize model output
+Convert tool calls into:
+assistantMessage (a coherent explanation for the candidate).
+plan (ordered steps).
+proposedEdits[] with:
+filePath, editType, content/diff, rationale.
+tags (e.g., taskCategory, complexityEstimate, confidence).
+Apply safety checks:
+Remove edits targeting disallowed paths (secrets, config, etc.).
+Limit number of files or total lines changed per interaction.
+Log to S3
+Record:
+requestId, candidateId, taskId.
+Timestamps.
+Redacted input context (if necessary).
+Prompt, model output, parsed plan, edits, tags.
+Tokens in/out, latency, filters applied.
+Response to MCP server
+Return JSON:
+requestId.
+assistantMessage.
+plan.
+proposedEdits[].
+tags (optional).
+4.2 OutcomeLogger Lambda (POST /interaction-outcome)
+Responsibilities:
+Validate input
+Check: requestId, candidateId or candidateToken, taskId, decisions.
+Each decision includes at least:
+filePath, editType, decision.
+Write outcome log to S3
+Append/overwrite JSON for this requestId:
+Decisions per edit.
+Optional:
+testsRun, testsPassed.
+timeToDecisionMs.
+Any additional metrics you collected or derived in MCP.
+Emit metrics
+Update metrics such as:
+Edits approved vs proposed.
+Interactions where tests were run.
+Pass/fail rates.
+Respond to MCP
+Return simple success/failure JSON.
+
+5. Bedrock configuration and instructions
+5.1 Model access
+Enable a code‑capable model in your region.
+Grant Lambda:
+Permissions to invoke this model.
+Decide on:
+On‑demand vs provisioned throughput based on expected candidate volume and concurrency.
+5.2 Prompt and behavior design
+System instructions emphasize:
+Role: “You are an AI assistant helping a candidate complete an evaluation project. You must both help and teach.”
+Behavior:
+Explain reasoning.
+Suggest edits as structured tool calls.
+Suggest tests and validation.
+Ask clarifying questions when needed.
+Constraints:
+Respect “do not touch” areas.
+Avoid large rewrites when small changes suffice.
+User and context messages include:
+Candidate’s natural language request (userMessage).
+Relevant code snippets.
+Summary of requirements.
+5.3 Tool use inside Bedrock
+Define tools for edits and tagging as above.
+Instruct the model to:
+Prefer incremental edits.
+Attach a rationale to each proposed edit.
+Add tags about the nature of the interaction (e.g., explanation vs direct coding)
+
